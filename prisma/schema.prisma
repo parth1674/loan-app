@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullname     String
+  firstName        String?
+  lastName         String?
+  fatherName       String?
+  dob              DateTime?
+  profession       String?
+  annualIncome     Int?
+  contact          String?
+  altContact       String?
+  communicationAddress String?
+  permanentAddress     String?
+
+  // === KYC ===
+  aadhaarNumber   String?
+  panNumber       String?
+  photoUrl        String?
+  aadhaarUrl      String?
+  panUrl          String?
+
+  // === Bank Details ===
+  accountHolderName String?
+  accountNumber     String?
+  ifsc              String?
+  bankName          String?
+  branch            String?
+  city              String?
+  state             String?
+  chequeUrl         String?
+
+  role         Role     @default(CLIENT)
+  status       String
+  createdAt    DateTime? @default(now())
+  updatedAt    DateTime? @updatedAt
+
+  loans        Loan[]
+}
+
+
+model Loan {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  principal       Decimal   @db.Decimal(14,2)
+  annualRatePct   Decimal   @db.Decimal(5,2)
+  startDate       DateTime
+  termDays        Int
+  dueDate         DateTime?
+  lastAccruedAt   DateTime?
+  interestAccrued Decimal   @db.Decimal(14,2) @default(0)
+  outstanding     Decimal   @db.Decimal(14,2)
+  status          LoanStatus @default(ACTIVE)
+  paymentFrequency PaymentFrequency @default(MONTHLY)
+  nextPaymentDate DateTime?
+  createdAt       DateTime  @default(now())
+  payments        Payment[]
+}
+
+model Payment {
+  id         String   @id @default(uuid())
+  loanId     String
+  loan       Loan     @relation(fields: [loanId], references: [id])
+  amount     Decimal  @db.Decimal(14,2)
+  paidAt     DateTime @default(now())
+  type       PaymentType
+  createdAt  DateTime @default(now())
+}
+
+enum LoanStatus {
+  ACTIVE
+  CLOSED
+  OVERDUE
+  DEFAULTED
+}
+
+enum PaymentType {
+  EMI
+  PREPAYMENT
+  PENALTY
+}
+
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum PaymentFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+  FLEXIBLE
+}
