@@ -16,6 +16,7 @@ export class AuthService {
   // REGISTER USER
   // ==========================
   async register(dto: RegisterDto) {
+    // 1) Email already hai kya?
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -24,50 +25,74 @@ export class AuthService {
       throw new BadRequestException('Email already exists');
     }
 
+    // 2) Password hash
     const hashed = await bcrypt.hash(dto.password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash: hashed,
-        fullname: `${dto.firstName} ${dto.lastName || ""}`.trim(),
-        firstName: dto.firstName,
-
-        lastName: dto.lastName,
-        fatherName: dto.fatherName,
-        contact: dto.contact,
-        altContact: dto.altContact,
-
-        dob: new Date(dto.dob),
-        profession: dto.profession,
-        annualIncome: Number(dto.annualIncome),
-        communicationAddress: dto.communicationAddress,
-        permanentAddress: dto.permanentAddress,
-        aadhaarNumber: dto.aadhaarNumber,
-        panNumber: dto.panNumber,
-        photoUrl: dto.photoUrl,
-        aadhaarUrl: dto.aadhaarUrl,
-        panUrl: dto.panUrl,
-        accountHolderName: dto.accountHolderName,
-        accountNumber: dto.accountNumber,
-        ifsc: dto.ifsc,
-        bankName: dto.bankName,
-        branch: dto.branch,
-        city: dto.city,
-        state: dto.state,
-        chequeUrl: dto.chequeUrl,
-
-        role: "CLIENT",
-        status: "PENDING",
+    // 3) DOB ko safe tarike se convert karo
+    let dobValue: Date | null = null;
+    if (dto.dob) {
+      const parsed = new Date(dto.dob);
+      if (isNaN(parsed.getTime())) {
+        throw new BadRequestException('Invalid DOB format');
       }
+      dobValue = parsed;
+    }
 
-    });
+    // 4) Annual income ko safe tarike se number me convert karo
+    let annualIncomeNumber: number | null = null;
+    if (dto.annualIncome && dto.annualIncome !== '') {
+      const n = Number(dto.annualIncome);
+      if (Number.isNaN(n)) {
+        throw new BadRequestException('Annual income must be a number');
+      }
+      annualIncomeNumber = n;
+    }
+
+    // 5) Base data (yeh hamesha hona hi chahiye)
+    const data: any = {
+      email: dto.email,
+      passwordHash: hashed,
+      fullname: `${dto.firstName || ''} ${dto.lastName || ''}`.trim() || dto.email,
+      role: 'CLIENT',
+      status: 'PENDING',
+    };
+
+    // 6) Optional strings: agar aaye hain to hi set karo
+    if (dto.firstName) data.firstName = dto.firstName;
+    if (dto.lastName) data.lastName = dto.lastName;
+    if (dto.fatherName) data.fatherName = dto.fatherName;
+    if (dto.contact) data.contact = dto.contact;
+    if (dto.altContact) data.altContact = dto.altContact;
+    if (dto.profession) data.profession = dto.profession;
+    if (dto.communicationAddress) data.communicationAddress = dto.communicationAddress;
+    if (dto.permanentAddress) data.permanentAddress = dto.permanentAddress;
+    if (dto.aadhaarNumber) data.aadhaarNumber = dto.aadhaarNumber;
+    if (dto.panNumber) data.panNumber = dto.panNumber;
+    if (dto.photoUrl) data.photoUrl = dto.photoUrl;
+    if (dto.aadhaarUrl) data.aadhaarUrl = dto.aadhaarUrl;
+    if (dto.panUrl) data.panUrl = dto.panUrl;
+    if (dto.accountHolderName) data.accountHolderName = dto.accountHolderName;
+    if (dto.accountNumber) data.accountNumber = dto.accountNumber;
+    if (dto.ifsc) data.ifsc = dto.ifsc;
+    if (dto.bankName) data.bankName = dto.bankName;
+    if (dto.branch) data.branch = dto.branch;
+    if (dto.city) data.city = dto.city;
+    if (dto.state) data.state = dto.state;
+    if (dto.chequeUrl) data.chequeUrl = dto.chequeUrl;
+
+    // 7) Optional date/number fields
+    if (dobValue) data.dob = dobValue;
+    if (annualIncomeNumber !== null) data.annualIncome = annualIncomeNumber;
+
+    // 8) User create
+    const user = await this.prisma.user.create({ data });
 
     return {
       message: 'Registered successfully. Wait for admin approval.',
-      user
+      user,
     };
   }
+
 
   // ==========================
   // LOGIN USER
@@ -172,7 +197,7 @@ export class AuthService {
       ? Number(body.annualIncome)
       : 0;
 
-    const baseUrl = "http://localhost:3000/uploads/";
+    const baseUrl = process.env.FILE_BASE_URL || "";
 
     return await this.prisma.user.create({
       data: {

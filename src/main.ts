@@ -2,7 +2,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express'; 
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { startDailyAccrual } from './cron/daily.cron';
 import { LoanService } from './loan/loan.service';
 import { join } from 'path';
@@ -10,9 +10,14 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // FIX 1: Enable CORS for frontend
+  const allowedOrigins = [
+    'http://localhost:3001'];
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
+  // CORS (Render + Local both)
   app.enableCors({
-    origin: 'http://localhost:3001', // FRONTEND URL
+    origin: allowedOrigins,
     credentials: true,
   });
 
@@ -20,8 +25,8 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      skipMissingProperties: true,
-      forbidUnknownValues: false,
+      skipMissingProperties: false,
+      forbidUnknownValues: true,
       transform: true,
     }),
   );
