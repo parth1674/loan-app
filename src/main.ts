@@ -11,7 +11,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const allowedOrigins = [
-    'http://localhost:3001'];
+    "http://localhost:3001",
+    "https://finance-qgp6.onrender.com"
+  ];
   if (process.env.FRONTEND_URL) {
     allowedOrigins.push(process.env.FRONTEND_URL);
   }
