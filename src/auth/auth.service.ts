@@ -251,7 +251,83 @@ export class AuthService {
 
   }
 
+  // auth.service.ts ke andar (class AuthService { ... } ke andar hi)
 
+  // ==========================
+  // CLIENT / ADMIN — UPDATE PROFILE
+  // ==========================
+  async updateProfile(id: string, dto: Partial<RegisterDto>) {
+    // Allowed fields ko hi update karenge
+    const data: any = {};
 
+    if (dto.firstName !== undefined) data.firstName = dto.firstName;
+    if (dto.lastName !== undefined) data.lastName = dto.lastName;
+
+    if (dto.firstName || dto.lastName) {
+      data.fullname = `${dto.firstName || ''} ${dto.lastName || ''}`.trim();
+    }
+
+    if (dto.contact !== undefined) data.contact = dto.contact;
+    if (dto.altContact !== undefined) data.altContact = dto.altContact;
+
+    if (dto.profession !== undefined) data.profession = dto.profession;
+
+    if (dto.communicationAddress !== undefined) {
+      data.communicationAddress = dto.communicationAddress;
+    }
+    if (dto.permanentAddress !== undefined) {
+      data.permanentAddress = dto.permanentAddress;
+    }
+
+    if (dto.accountHolderName !== undefined) {
+      data.accountHolderName = dto.accountHolderName;
+    }
+    if (dto.accountNumber !== undefined) {
+      data.accountNumber = dto.accountNumber;
+    }
+    if (dto.ifsc !== undefined) data.ifsc = dto.ifsc;
+    if (dto.bankName !== undefined) data.bankName = dto.bankName;
+    if (dto.branch !== undefined) data.branch = dto.branch;
+    if (dto.city !== undefined) data.city = dto.city;
+    if (dto.state !== undefined) data.state = dto.state;
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No fields to update');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data,
+    });
+
+    return {
+      message: 'Profile updated successfully',
+      user: updated,
+    };
+  }
+
+  async updateUser(id: string, data: any) {
+    return await this.prisma.user.update({
+      where: { id },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        fullname: `${data.firstName} ${data.lastName}`.trim(),
+        contact: data.contact,
+        altContact: data.altContact,
+        fatherName: data.fatherName,
+        profession: data.profession,
+        communicationAddress: data.communicationAddress,
+        permanentAddress: data.permanentAddress,
+        accountHolderName: data.accountHolderName,
+        accountNumber: data.accountNumber,
+        ifsc: data.ifsc,
+        bankName: data.bankName,
+        branch: data.branch,
+        city: data.city,
+        state: data.state,
+      },
+    });
+  }
 
 }

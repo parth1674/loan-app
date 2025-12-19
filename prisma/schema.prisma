@@ -5,30 +5,31 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl=env("DIRECT_DATABASE_URL")
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  fullname     String
-  firstName        String?
-  lastName         String?
-  fatherName       String?
-  dob              DateTime?
-  profession       String?
-  annualIncome     Int?
-  contact          String?
-  altContact       String?
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  passwordHash         String
+  fullname             String
+  firstName            String?
+  lastName             String?
+  fatherName           String?
+  dob                  DateTime?
+  profession           String?
+  annualIncome         Int?
+  contact              String?
+  altContact           String?
   communicationAddress String?
   permanentAddress     String?
 
   // === KYC ===
-  aadhaarNumber   String?
-  panNumber       String?
-  photoUrl        String?
-  aadhaarUrl      String?
-  panUrl          String?
+  aadhaarNumber String?
+  panNumber     String?
+  photoUrl      String?
+  aadhaarUrl    String?
+  panUrl        String?
 
   // === Bank Details ===
   accountHolderName String?
@@ -40,42 +41,44 @@ model User {
   state             String?
   chequeUrl         String?
 
-  role         Role     @default(CLIENT)
-  status       String
-  createdAt    DateTime? @default(now())
-  updatedAt    DateTime? @updatedAt
+  role      Role      @default(CLIENT)
+  status    String
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
 
-  loans        Loan[]
+  loans Loan[]
 }
 
-
 model Loan {
-  id              String    @id @default(uuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id])
-  principal       Decimal   @db.Decimal(14,2)
-  annualRatePct   Decimal   @db.Decimal(5,2)
-  startDate       DateTime
-  termDays        Int
-  dueDate         DateTime?
-  lastAccruedAt   DateTime?
-  interestAccrued Decimal   @db.Decimal(14,2) @default(0)
-  outstanding     Decimal   @db.Decimal(14,2)
-  status          LoanStatus @default(ACTIVE)
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id])
+  principal        Decimal          @db.Decimal(14, 2)
+  annualRatePct    Decimal          @db.Decimal(5, 2)
+  startDate        DateTime
+  termDays         Int
+  dueDate          DateTime?
+  lastAccruedAt    DateTime?
+  interestAccrued  Decimal          @default(0) @db.Decimal(14, 2)
+  outstanding      Decimal          @db.Decimal(14, 2)
+  status           LoanStatus       @default(ACTIVE)
   paymentFrequency PaymentFrequency @default(MONTHLY)
-  nextPaymentDate DateTime?
-  createdAt       DateTime  @default(now())
-  payments        Payment[]
+  nextPaymentDate  DateTime?
+  createdAt        DateTime         @default(now())
+  payments         Payment[]
+
+  ledgers          LoanLedger[]
+  loanPayments     LoanPayment[]
 }
 
 model Payment {
-  id         String   @id @default(uuid())
-  loanId     String
-  loan       Loan     @relation(fields: [loanId], references: [id])
-  amount     Decimal  @db.Decimal(14,2)
-  paidAt     DateTime @default(now())
-  type       PaymentType
-  createdAt  DateTime @default(now())
+  id        String      @id @default(uuid())
+  loanId    String
+  loan      Loan        @relation(fields: [loanId], references: [id])
+  amount    Decimal     @db.Decimal(14, 2)
+  paidAt    DateTime    @default(now())
+  type      PaymentType
+  createdAt DateTime    @default(now())
 }
 
 model NewsletterSubscriber {
@@ -97,7 +100,6 @@ enum PaymentType {
   PENALTY
 }
 
-
 enum Role {
   ADMIN
   CLIENT
@@ -111,4 +113,36 @@ enum PaymentFrequency {
   HALF_YEARLY
   YEARLY
   FLEXIBLE
+}
+
+model LoanLedger {
+  id String @id @default(uuid())
+
+  loanId String
+  loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  date            DateTime // kis din ka record
+  principalAmount Float // original principal snapshot
+  interestAmount  Float // us din ka interest
+  paymentAmount   Float    @default(0)
+
+  outstandingAfter Float // calculation ke baad ka outstanding
+
+  createdAt DateTime @default(now())
+
+  @@unique([loanId, date])
+  @@index([loanId])
+}
+
+model LoanPayment {
+  id String @id @default(uuid())
+
+  loanId String
+  loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  amount Float
+  type   String // EMI / PART / PENALTY
+  paidAt DateTime @default(now())
+
+  @@index([loanId])
 }

@@ -21,6 +21,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { diskStorage } from 'multer';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -122,7 +123,39 @@ export class AuthController {
     return this.authService.registerComplete(body, files);
   }
 
+  // -----------------------------------------
+  // ADMIN OR CLIENT: Update profile
+  // CLIENT sirf apna hi update kar sakta hai
+  // -----------------------------------------
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'CLIENT')
+  @Patch('user/:id/profile')
+  async updateProfile(
+    @Param('id') id: string,
+    @Body() body: UpdateProfileDto,
+    @Req() req: any,
+  ) {
+    // Agar CLIENT hai to sirf apna hi id update kar sakta hai
+    if (req.user.role === 'CLIENT' && req.user.id !== id) {
+      throw new ForbiddenException('Not allowed to update this profile');
+    }
 
+    return this.authService.updateProfile(id, body);
+  }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CLIENT', 'ADMIN')
+  @Patch('user/:id')
+  updateUser(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Req() req: any
+  ) {
+    // Client cannot update another client
+    if (req.user.role === 'CLIENT' && req.user.id !== id) {
+      throw new ForbiddenException('Not allowed');
+    }
+    return this.authService.updateUser(id, body);
+  }
 
 }

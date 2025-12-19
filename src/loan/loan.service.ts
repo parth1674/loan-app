@@ -380,7 +380,15 @@ export class LoanService {
     const activeLoans = await this.prisma.loan.count({ where: { status: "ACTIVE" } });
     const overdueLoans = await this.prisma.loan.count({ where: { status: "OVERDUE" } });
 
-    const totalOutstanding = await this.prisma.loan.aggregate({
+    const principalAgg = await this.prisma.loan.aggregate({
+      _sum: { principal: true },
+    });
+
+    const interestAgg = await this.prisma.loan.aggregate({
+      _sum: { interestAccrued: true },
+    });
+
+    const outstandingAgg = await this.prisma.loan.aggregate({
       _sum: { outstanding: true },
     });
 
@@ -393,9 +401,28 @@ export class LoanService {
       activeLoans,
       overdueLoans,
 
-      totalOutstanding: Number(totalOutstanding._sum.outstanding || 0),
+      // 🔥 NEW
+      totalPrincipal: Number(principalAgg._sum.principal || 0),
+      totalInterest: Number(interestAgg._sum.interestAccrued || 0),
+      totalOutstanding: Number(outstandingAgg._sum.outstanding || 0),
     };
   }
+
+
+  async getLoanAmounts(loanId: string) {
+    const loan = await this.prisma.loan.findUnique({
+      where: { id: loanId },
+    });
+
+    if (!loan) throw new Error("Loan not found");
+
+    return {
+      principal: loan.principal,
+      interestAccrued: loan.interestAccrued,
+      outstanding: loan.outstanding,
+    };
+  }
+
 
 
 }

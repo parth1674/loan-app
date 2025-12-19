@@ -33,4 +33,29 @@ export class NewsletterService {
       throw new BadRequestException('Failed to subscribe');
     }
   }
+
+
+ // ✅ ADMIN: Get all subscribers
+  async getAll() {
+    return this.prisma.newsletterSubscriber.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ✅ ADMIN: Delete one subscriber
+  async delete(id: string) {
+    const existing = await this.prisma.newsletterSubscriber.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new BadRequestException('Subscriber not found');
+    }
+
+    await this.prisma.newsletterSubscriber.delete({
+      where: { id },
+    });
+
+    return { message: 'Subscriber deleted successfully' };
+  }
 }
