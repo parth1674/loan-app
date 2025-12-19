@@ -381,6 +381,7 @@ export class LoanService {
     const overdueLoans = await this.prisma.loan.count({ where: { status: "OVERDUE" } });
 
     const principalAgg = await this.prisma.loan.aggregate({
+      where: {status: "ACTIVE"},
       _sum: { principal: true },
     });
 
@@ -389,6 +390,7 @@ export class LoanService {
     });
 
     const outstandingAgg = await this.prisma.loan.aggregate({
+      where: {status: "ACTIVE"},
       _sum: { outstanding: true },
     });
 
