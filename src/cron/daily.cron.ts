@@ -8,6 +8,8 @@ export function startDailyAccrual(loanService: LoanService) {
     try {
       console.log('[cron] daily accrual started');
       await loanService.accrueAllLoans();
+      await loanService.applyLateFees();
+      await loanService.detectAndMarkNPA();
       console.log('[cron] daily accrual finished');
     } catch (err) {
       console.error('[cron] daily accrual error', err);

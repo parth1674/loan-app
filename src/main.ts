@@ -3,8 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { startDailyAccrual } from './cron/daily.cron';
-import { LoanService } from './loan/loan.service';
 import { join } from 'path';
 
 async function bootstrap() {
@@ -38,12 +36,6 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-
-  await app.init();
-
-  // Start CRON
-  const loanService = app.get(LoanService);
-  startDailyAccrual(loanService);
 
   await app.listen(3000);
   console.log('Application listening on port 3000');

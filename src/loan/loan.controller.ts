@@ -17,11 +17,15 @@ import { PayDto } from './dto/pay.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { InterestService } from '../interest/interest.service';
 
 @Controller('loan')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class LoanController {
-  constructor(private loanService: LoanService) { }
+  constructor(
+    private loanService: LoanService,
+    private interestService: InterestService,
+  ) { }
 
   // ============================
   // ADMIN: CREATE LOAN FOR USER
@@ -76,7 +80,7 @@ export class LoanController {
   @Roles('ADMIN')
   @Post('accrue/:loanId')
   async accrue(@Param('loanId') loanId: string) {
-    return this.loanService.accrueInterestForLoan(loanId);
+    return this.interestService.accrueDailyInterest(loanId);
   }
 
   // ============================
@@ -85,7 +89,7 @@ export class LoanController {
   @Roles('ADMIN')
   @Post('accrue-all')
   async accrueAll() {
-    return this.loanService.accrueAllLoans();
+    return this.interestService.accrueDailyInterestForAll();
   }
 
   // ============================================
@@ -111,7 +115,7 @@ export class LoanController {
   @Roles('ADMIN')
   @Get('test-accrue')
   async runAccrual() {
-    return this.loanService.accrueAllLoans();
+    return this.interestService.accrueDailyInterestForAll();
   }
 
   // ======================================
@@ -179,5 +183,61 @@ export class LoanController {
   @Roles('ADMIN')
   getAdminSummary() {
     return this.loanService.getAdminSummary();
+  }
+
+  @Post('accrue-interest')
+  @UseGuards(JwtAuthGuard)
+  async forceAccrue() {
+    return this.interestService.accrueDailyInterestForAll();
+  }
+
+  @Roles('CLIENT', 'ADMIN')
+  @Get('interest/summary/:userId')
+  getInterestSummary(
+    @Param('userId') userId: string,
+    @Req() req: any,
+  ) {
+    if (req.user.role === 'CLIENT' && req.user.id !== userId) {
+      throw new ForbiddenException('Not allowed to view this interest summary');
+    }
+
+    return this.interestService.getUserInterestSummary(userId);
+  }
+
+  @Roles('CLIENT', 'ADMIN')
+  @Get(':loanId/interest-history')
+  async getInterestHistory(
+    @Param('loanId') loanId: string,
+    @Req() req: any,
+  ) {
+    if (req.user.role === 'CLIENT') {
+      const loan = await this.loanService.getLoanAmounts(loanId);
+      if ((loan as any).userId && (loan as any).userId !== req.user.id) {
+        throw new ForbiddenException('Not allowed to view this interest history');
+      }
+    }
+
+    return this.interestService.getLoanInterestHistory(loanId);
+  }
+
+  @Get(':id/schedule')
+  async getSchedule(@Param('id') id: string) {
+    return this.loanService.getAmortizationSchedule(id);
+  }
+
+  @Post("apply-late-fee")
+  applyLateFeeManual() {
+    return this.loanService.applyLateFees();
+  }
+
+  @Get("detect-npa")
+  async detectAndMarkNPA() {
+    await this.loanService.detectAndMarkNPA();
+    return { message: "NPA detection done" };
+  }
+
+  @Get("risk/:loanId")
+  async getLoanRisk(@Param("loanId") loanId: string) {
+    return this.loanService.calculateLoanRiskScore(loanId);
   }
 }

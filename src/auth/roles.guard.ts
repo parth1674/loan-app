@@ -29,3 +29,14 @@ export class RolesGuard implements CanActivate {
   }
 }
 
+@Injectable()
+export class AdminGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest();
+    if (!req.user || req.user.role !== "ADMIN") {
+      throw new ForbiddenException("Admin access only");
+    }
+    return true;
+  }
+}
+

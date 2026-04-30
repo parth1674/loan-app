@@ -1,32 +1,35 @@
-// src/interest/interest.cron.ts
-import { Injectable } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
-import { PrismaService } from "../prisma/prisma.service";
-import { InterestService } from "../interest/interest.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { InterestService } from '../interest/interest.service';
+import { LoanService } from '../loan/loan.service';
 
 @Injectable()
 export class InterestCron {
+  private readonly logger = new Logger(InterestCron.name);
+
   constructor(
-    private prisma: PrismaService,
-    private interestService: InterestService
+    private interestService: InterestService,
+    private loanService: LoanService,
   ) {}
 
-  // 🔁 Runs every day at 12:00 AM
-  @Cron("0 0 * * *")
+  // Runs every day at 00:05 server time.
+  @Cron('5 0 * * *')
   async handleDailyInterest() {
-    console.log("⏰ Running daily interest job");
+    this.logger.log('Daily loan maintenance job started');
 
-    const loans = await this.prisma.loan.findMany({
-      where: { status: "ACTIVE" },
-    });
-
-    for (const loan of loans) {
-      await this.interestService.accrueDailyInterest(
-        loan.id,
-        new Date()
+    try {
+      const result = await this.interestService.accrueDailyInterestForAll(
+        new Date(),
       );
-    }
 
-    console.log(`✅ Interest applied to ${loans.length} loans`);
+      await this.loanService.applyLateFees();
+      await this.loanService.detectAndMarkNPA();
+
+      this.logger.log(
+        `Daily loan maintenance job finished. Interest applied to ${result.appliedCount}/${result.eligibleLoans} eligible loans.`,
+      );
+    } catch (error) {
+      this.logger.error('Daily loan maintenance job failed', error as Error);
+    }
   }
 }

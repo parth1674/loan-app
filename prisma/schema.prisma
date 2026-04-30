@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl=env("DIRECT_DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
@@ -47,6 +47,8 @@ model User {
   updatedAt DateTime? @updatedAt
 
   loans Loan[]
+
+  loanRequests LoanRequest[]
 }
 
 model Loan {
@@ -67,8 +69,11 @@ model Loan {
   createdAt        DateTime         @default(now())
   payments         Payment[]
 
-  ledgers          LoanLedger[]
-  loanPayments     LoanPayment[]
+  ledgers      LoanLedger[]
+  loanPayments LoanPayment[]
+  lateFeeAccrued Float @default(0)
+  isNPA Boolean @default(false)
+  npaMarkedAt DateTime?
 }
 
 model Payment {
@@ -79,6 +84,9 @@ model Payment {
   paidAt    DateTime    @default(now())
   type      PaymentType
   createdAt DateTime    @default(now())
+   // 🔥 NEW FIELDS
+  interestPaid  Float    @default(0)
+  principalPaid Float    @default(0)
 }
 
 model NewsletterSubscriber {
@@ -145,4 +153,27 @@ model LoanPayment {
   paidAt DateTime @default(now())
 
   @@index([loanId])
+}
+
+model LoanRequest {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  requestedAmount Float
+  requestedRate   Float
+  termDays        Int
+  purpose         String?
+
+  status    LoanRequestStatus @default(PENDING)
+  adminNote String?
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+}
+
+enum LoanRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

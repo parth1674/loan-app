@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Loan" ADD COLUMN     "isNPA" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "npaMarkedAt" TIMESTAMP(3);

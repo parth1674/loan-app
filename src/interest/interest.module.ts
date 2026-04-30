@@ -1,17 +1,10 @@
-import { Module } from "@nestjs/common";
-import { ScheduleModule } from "@nestjs/schedule";
-import { PrismaService } from "../prisma/prisma.service";
-import { InterestService } from "./interest.service";
-import { InterestCron } from "../cron/interest.cron";
-import { PrismaModule } from "src/prisma/prisma.module";
+import { Module } from '@nestjs/common';
+import { PrismaModule } from '../prisma/prisma.module';
+import { InterestService } from './interest.service';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), PrismaModule],
-  providers: [
-    PrismaService,
-    InterestService,
-    InterestCron,
-  ],
+  imports: [PrismaModule],
+  providers: [InterestService],
   exports: [InterestService],
 })
 export class InterestModule {}

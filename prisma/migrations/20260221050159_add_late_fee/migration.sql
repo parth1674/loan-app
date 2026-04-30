@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Loan" ADD COLUMN     "lateFeeAccrued" DOUBLE PRECISION NOT NULL DEFAULT 0;
