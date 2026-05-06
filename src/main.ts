@@ -12,9 +12,18 @@ async function bootstrap() {
     "http://localhost:3001",
     "https://finance-qgp6.onrender.com"
   ];
+
   if (process.env.FRONTEND_URL) {
     allowedOrigins.push(process.env.FRONTEND_URL);
   }
+  if (process.env.FRONTEND_URLS) {
+    allowedOrigins.push(
+      ...process.env.FRONTEND_URLS.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    );
+  }
+
   // CORS (Render + Local both)
   app.enableCors({
     origin: allowedOrigins,
@@ -37,8 +46,9 @@ async function bootstrap() {
   });
 
 
-  await app.listen(3000);
-  console.log('Application listening on port 3000');
+  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+  await app.listen(port);
+  console.log(`Application listening on port ${port}`);
 }
 
 bootstrap();
