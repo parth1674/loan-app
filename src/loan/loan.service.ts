@@ -327,6 +327,8 @@ export class LoanService {
   // USER DASHBOARD SUMMARY
   // ===============================
   async getDashboard(userId: string) {
+    await this.accrueAllLoans();
+    await this.applyLateFees();
     const loans = await this.prisma.loan.findMany({
       where: {
         userId,
@@ -553,6 +555,8 @@ export class LoanService {
   }
 
   async getAdminSummary() {
+    await this.accrueAllLoans();
+    await this.applyLateFees();
     await this.detectAndMarkNPA(); // Ensure NPA status is up to date before generating summary 
     // await this.accrueAllLoans();
     // ===============================
