@@ -58,9 +58,70 @@ export class LoanService {
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      include: { loans: true },
     });
 
     if (!user) throw new BadRequestException('User not found');
+
+    // ✅ Admin loan create only for ACTIVE + KYC verified users
+    if (user.status !== "ACTIVE") {
+      throw new BadRequestException(
+        "Cannot create loan. User account is not active."
+      );
+    }
+
+    if (!user.panVerified || !user.aadhaarVerified) {
+      throw new BadRequestException(
+        "Cannot create loan. User KYC verification is incomplete or failed."
+      );
+    }
+
+    const totalOutstanding = user.loans.reduce(
+      (sum: number, loan: any) => sum + Number(loan.outstanding || 0),
+      0
+    );
+
+    const overdueLoans = user.loans.filter(
+      (loan: any) => loan.status === "OVERDUE" || loan.status === "DEFAULTED"
+    );
+
+    let riskScore = 100;
+
+    if (!user.annualIncome || Number(user.annualIncome) <= 0) {
+      riskScore -= 10;
+    }
+
+    if (!user.profession) {
+      riskScore -= 5;
+    }
+
+    if (overdueLoans.length > 0) {
+      riskScore -= 25;
+    }
+
+    if (
+      Number(user.annualIncome) > 0 &&
+      totalOutstanding > Number(user.annualIncome) * 2
+    ) {
+      riskScore -= 20;
+    }
+
+    riskScore = Math.max(0, riskScore);
+
+    if (riskScore < 50) {
+      throw new BadRequestException(
+        "Cannot create loan. User risk score is too low."
+      );
+    }
+
+    const safeLimit = Number(user.annualIncome || 0) * 0.5;
+    const eligibleLimit = Math.max(0, safeLimit - totalOutstanding);
+
+    if (principal > eligibleLimit) {
+      throw new BadRequestException(
+        `Cannot create loan. Requested amount exceeds eligible limit of ₹${eligibleLimit.toFixed(2)}.`
+      );
+    }
 
     const sDate = startDate ?? new Date();
     const dueDate = new Date(sDate);
@@ -91,6 +152,68 @@ export class LoanService {
     return {
       message: 'Loan created successfully',
       loan,
+    };
+  }
+
+  async checkLoanEligibility(userId: string, requestedAmount: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        loans: {
+          where: {
+            status: {
+              in: ["ACTIVE", "OVERDUE", "DEFAULTED"],
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException("User not found");
+    }
+
+    const annualIncome = Number(user.annualIncome || 0);
+
+    const totalOutstanding = user.loans.reduce(
+      (sum: number, loan: any) => sum + Number(loan.outstanding || 0),
+      0
+    );
+
+    const safeLimit = annualIncome * 0.5;
+    const eligibleLimit = Math.max(0, safeLimit - totalOutstanding);
+
+    let decision = "APPROVED";
+    const reasons: string[] = [];
+
+    if (user.status !== "ACTIVE") {
+      decision = "REJECTED";
+      reasons.push("User account is not active");
+    }
+
+    if (!user.panVerified || !user.aadhaarVerified) {
+      decision = "REJECTED";
+      reasons.push("KYC verification is incomplete or failed");
+    }
+
+    if (annualIncome <= 0) {
+      decision = "REJECTED";
+      reasons.push("Annual income is missing");
+    }
+
+    if (requestedAmount > eligibleLimit) {
+      decision = "NOT_RECOMMENDED";
+      reasons.push("Requested amount exceeds eligible loan limit");
+    }
+
+    return {
+      requestedAmount,
+      annualIncome,
+      totalOutstanding,
+      safeLimit,
+      eligibleLimit,
+      decision,
+      reasons,
     };
   }
 
@@ -232,6 +355,24 @@ export class LoanService {
     }
 
     return { message: "Smart late fee applied" };
+  }
+
+  async getLoanById(loanId: string) {
+    const loan = await this.prisma.loan.findUnique({
+      where: { id: loanId },
+      include: {
+        user: true,
+        payments: {
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (!loan) {
+      throw new BadRequestException("Loan not found");
+    }
+
+    return this.attachInterestViewFields(loan);
   }
 
   // =========================================================================

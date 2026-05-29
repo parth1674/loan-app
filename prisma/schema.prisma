@@ -42,13 +42,16 @@ model User {
   chequeUrl         String?
 
   role      Role      @default(CLIENT)
-  status    String
+  status String
   createdAt DateTime? @default(now())
   updatedAt DateTime? @updatedAt
 
   loans Loan[]
 
   loanRequests LoanRequest[]
+  panVerified Boolean @default(false)
+  aadhaarVerified Boolean @default(false)
+  kycRemark String?
 }
 
 model Loan {

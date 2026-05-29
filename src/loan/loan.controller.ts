@@ -46,6 +46,18 @@ export class LoanController {
     );
   }
 
+  @Roles('ADMIN')
+  @Get('eligibility/:userId')
+  async checkEligibility(
+    @Param('userId') userId: string,
+    @Query('amount') amount: string,
+  ) {
+    return this.loanService.checkLoanEligibility(
+      userId,
+      Number(amount || 0),
+    );
+  }
+
   // ==============================================
   // ADMIN: GET ALL LOANS OF USER (RAW LIST)
   // (OPTIONAL: you can limit this to ADMIN only)
@@ -218,6 +230,12 @@ export class LoanController {
     }
 
     return this.interestService.getLoanInterestHistory(loanId);
+  }
+
+  @Roles('ADMIN')
+  @Get('details/:loanId')
+  async getLoanById(@Param('loanId') loanId: string) {
+    return this.loanService.getLoanById(loanId);
   }
 
   @Get(':id/schedule')

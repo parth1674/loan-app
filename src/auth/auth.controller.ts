@@ -54,6 +54,13 @@ export class AuthController {
     return this.authService.approveUser(id);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Patch('reject/:id')
+  rejectUser(@Param('id') id: string) {
+    return this.authService.rejectUser(id);
+  }
+
   // -----------------------------------------
   // ADMIN: Change User Status
   // status = PENDING | ACTIVE | INACTIVE
@@ -121,6 +128,40 @@ export class AuthController {
     @UploadedFiles() files: any
   ) {
     return this.authService.registerComplete(body, files);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("CLIENT")
+  @Patch("resubmit-kyc/:id")
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: "aadhaar", maxCount: 1 },
+        { name: "pan", maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: "./uploads",
+          filename: (req, file, cb) => {
+            const unique =
+              Date.now() + "-" + file.originalname.replace(/\s+/g, "");
+            cb(null, unique);
+          },
+        }),
+      }
+    )
+  )
+  resubmitKyc(
+    @Param("id") id: string,
+    @Body() body: any,
+    @UploadedFiles() files: any,
+    @Req() req: any
+  ) {
+    if (req.user.role === "CLIENT" && req.user.id !== id) {
+      throw new ForbiddenException("Not allowed");
+    }
+
+    return this.authService.resubmitKyc(id, body, files);
   }
 
   // -----------------------------------------
