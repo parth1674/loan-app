@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import Tesseract from "tesseract.js";
 import * as path from "path";
 import * as fs from "fs";
+import { uploadFileToSupabase } from "../common/upload-to-supabase";
 
 @Injectable()
 export class AuthService {
@@ -423,6 +424,63 @@ export class AuthService {
       }
     }
 
+    let aadhaarUrl: string | null = null;
+    let panUrl: string | null = null;
+    let photoUrl: string | null = null;
+    let chequeUrl: string | null = null;
+
+    if (files?.pan?.[0]) {
+      const panPath = path.join(
+        process.cwd(),
+        "uploads",
+        files.pan[0].filename
+      );
+
+      panUrl = await uploadFileToSupabase(
+        panPath,
+        "pan"
+      );
+    }
+
+    if (files?.aadhaar?.[0]) {
+      const aadhaarPath = path.join(
+        process.cwd(),
+        "uploads",
+        files.aadhaar[0].filename
+      );
+
+      aadhaarUrl = await uploadFileToSupabase(
+        aadhaarPath,
+        "aadhaar"
+      );
+    }
+
+    if (files?.photo?.[0]) {
+      const photoPath = path.join(
+        process.cwd(),
+        "uploads",
+        files.photo[0].filename
+      );
+
+      photoUrl = await uploadFileToSupabase(
+        photoPath,
+        "photo"
+      );
+    }
+
+    if (files?.cheque?.[0]) {
+      const chequePath = path.join(
+        process.cwd(),
+        "uploads",
+        files.cheque[0].filename
+      );
+
+      chequeUrl = await uploadFileToSupabase(
+        chequePath,
+        "cheque"
+      );
+    }
+
     let kycRemark = "KYC verified successfully";
 
     if (!panVerified && !aadhaarVerified) {
@@ -460,21 +518,10 @@ export class AuthService {
         kycRemark,
 
         // ⭐ FIXED — full file URLs and correct syntax
-        aadhaarUrl: files?.aadhaar?.[0]
-          ? baseUrl + files.aadhaar[0].filename
-          : null,
-
-        panUrl: files?.pan?.[0]
-          ? baseUrl + files.pan[0].filename
-          : null,
-
-        photoUrl: files?.photo?.[0]
-          ? baseUrl + files.photo[0].filename
-          : null,
-
-        chequeUrl: files?.cheque?.[0]
-          ? baseUrl + files.cheque[0].filename
-          : null,
+        aadhaarUrl,
+        panUrl,
+        photoUrl,
+        chequeUrl,
 
         accountHolderName: body.accountHolderName,
         accountNumber: body.accountNumber,
@@ -499,8 +546,6 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException("User not found");
     }
-
-    const baseUrl = process.env.FILE_BASE_URL || "";
 
     const enteredPan = String(body.panNumber || "")
       .toUpperCase()
@@ -535,7 +580,10 @@ export class AuthService {
         panVerified = true;
       }
 
-      panUrl = baseUrl + files.pan[0].filename;
+      panUrl = await uploadFileToSupabase(
+        panPath,
+        "pan"
+      );
     }
 
     // ✅ Aadhaar OCR verification
@@ -559,7 +607,10 @@ export class AuthService {
         aadhaarVerified = true;
       }
 
-      aadhaarUrl = baseUrl + files.aadhaar[0].filename;
+      aadhaarUrl = await uploadFileToSupabase(
+        aadhaarPath,
+        "aadhaar"
+      );
     }
 
     let kycRemark = "KYC verified successfully. Waiting for admin approval.";
